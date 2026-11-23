@@ -126,6 +126,42 @@ export function _initCctvPanel() {
     const current = this._cctvState?.showProjection !== false;
     this.actions.setParams({ showProjection: !current }, { origin: 'user' });
   });
+  this.listen(this._cctvPoliceCheckBtn, 'click', async () => {
+    const cameraId = this._activeCctvCameraId();
+    if (!cameraId) {
+      this.actions.showToast(t('Select a camera first'));
+      return;
+    }
+    const button = this._cctvPoliceCheckBtn;
+    if (button) button.disabled = true;
+    try {
+      const response = await fetch(`/api/cctv/police-check/${encodeURIComponent(cameraId)}`, {
+        method: 'POST',
+      });
+      const data = await response.json().catch(() => null);
+      if (!data) {
+        this.actions.showToast(t('Police check failed. Try again.'));
+        return;
+      }
+      if (!data.ok) {
+        this.actions.showToast(data.error || t('Police check failed. Try again.'));
+        return;
+      }
+      if (data.policeVehicleVisible === true) {
+        this.actions.showToast(t('Police vehicle visible in this snapshot.'));
+        return;
+      }
+      if (data.policeVehicleVisible === false) {
+        this.actions.showToast(t('No police vehicle visible in this snapshot.'));
+        return;
+      }
+      this.actions.showToast(t('Police check complete.'));
+    } catch {
+      this.actions.showToast(t('Police check failed. Try again.'));
+    } finally {
+      if (button) button.disabled = false;
+    }
+  });
 
   this.listen(this._cctvAdjustBtn, 'click', () => {
     const current = !!this._cctvState?.calibrationMode;

@@ -583,6 +583,19 @@ export const DELDOT_ANCHORS = [
   { lat: 38.6906, lon: -75.3877 }, // Georgetown (Sussex)
 ];
 
+/** CDOT / COtrip CCTV: keyless public JSON catalog, the same feed the COtrip site uses. No API key.
+ *  STILL_IMAGE views carry a direct JPEG URL; WMP views are HLS playlists whose stream name
+ *  also serves a JPEG snapshot at <CDOT_CCTV_SNAPSHOT_BASE_URL><stream>.flv.png. */
+export const CDOT_CCTV_URL = 'https://cotg.carsprogram.org/cameras_v1/api/cameras';
+export const CDOT_CCTV_SNAPSHOT_BASE_URL = 'https://cocam.carsprogram.org/Snapshots/';
+export const CDOT_CCTV_SNAPSHOT_HOST = 'cocam.carsprogram.org';
+export const DEFAULT_CDOT_MAX_SOURCES = 150;
+export const CDOT_CCTV_FRAME_REFRESH_MS = 3 * 60 * 1000;
+export const CDOT_ANCHORS = [
+  { lat: 39.7392, lon: -104.9903 }, // Denver (city centre)
+];
+export const CDOT_CCTV_BBOX = { minLat: 39.5, maxLat: 40.1, minLon: -105.3, maxLon: -104.6 };
+
 /** King County, WA road cameras: keyless public ArcGIS FeatureServer layer
  * ("King County and WSDOT Traffic Cameras", King County DOT Road Services).
  * GeoJSON with WGS84 point geometry. `outFields` is an explicit list on

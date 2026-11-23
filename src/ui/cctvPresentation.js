@@ -91,6 +91,10 @@ export function presentCctvPanel(state, enabled) {
       active: showProjection,
       text: showProjection ? t('PROJECTION ON') : t('PROJECTION OFF'),
     },
+  policeCheck: {
+    text: t('CHECK FOR POLICE'),
+    disabled: !enabled || !activeId,
+  },
     quality: {
       label: dirty
         ? t('CAL · EDITED (UNSAVED)')

@@ -311,6 +311,10 @@ export const DATA_CREDITS = [
     html: 'CCTV live video (Delaware): <a href="https://deldot.gov/map/" target="_blank" rel="noopener">DelDOT — Delaware Department of Transportation</a>',
   },
   {
+    key: 'cdot-cctv',
+    html: 'Traffic cameras (Colorado, Denver metro): <a href="https://www.cotrip.org/" target="_blank" rel="noopener">CDOT / COtrip</a>',
+  },
+  {
     key: 'caltrans-cctv',
     html:
       'CCTV cameras &amp; frames (California): Caltrans — ' +

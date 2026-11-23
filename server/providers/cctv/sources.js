@@ -83,6 +83,13 @@ import {
   HK_ANCHORS,
   HK_MAX_CATALOG_BYTES,
   CCTV_SOURCE_FETCH_TIMEOUT_MS,
+  CDOT_CCTV_BBOX,
+  CDOT_CCTV_FRAME_REFRESH_MS,
+  CDOT_CCTV_SNAPSHOT_BASE_URL,
+  CDOT_CCTV_SNAPSHOT_HOST,
+  CDOT_CCTV_URL,
+  CDOT_ANCHORS,
+  DEFAULT_CDOT_MAX_SOURCES,
   DELDOT_CCTV_URL,
   DEFAULT_DELDOT_MAX_SOURCES,
   DELDOT_ANCHORS,
@@ -2512,6 +2519,150 @@ function kingCountyModel(raw) {
     .replace(/\s+/g, ' ')
     .trim();
   return /^(?:[a-z]+\/)?ptz(?: ip)?$/i.test(model) ? '' : model;
+}
+
+/**
+ * CDOT / COtrip traffic cameras (Colorado, Denver metro). Keyless: one public
+ * JSON catalog, the same feed the COtrip website uses. No API key and no
+ * sign-up: the official keyed API at data.cotrip.org/api/v1 was tried first
+ * (it answers 404 without a key, and manage-api.cotrip.org needs an account
+ * with a password and email verification), so this pack uses the public
+ * no-auth endpoint instead. See DATA_SOURCES.md.
+ *
+ * A feed record is one physical camera with one or more views. STILL_IMAGE
+ * views carry a direct JPEG URL; WMP views are HLS playlists
+ * (publicstreamer1/2.cotrip.org/rtplive/<stream>/playlist.m3u8) whose stream
+ * name also serves a JPEG snapshot at
+ * cocam.carsprogram.org/Snapshots/<stream>.flv.png, so every camera gets a
+ * snapshotUrl and the frame proxy can serve a real still for HLS cameras too.
+ * One source per camera (first still view, else first HLS view); Denver-metro
+ * cameras only, nearest 150 to central Denver.
+ */
+export function cdotSnapshotUrlForStream(streamUrl) {
+  if (typeof streamUrl !== 'string' || !streamUrl) return '';
+  let parsed;
+  try {
+    parsed = new URL(streamUrl);
+  } catch {
+    return '';
+  }
+  if (!/^publicstreamer[0-9]+\.cotrip\.org$/.test(parsed.hostname)) return '';
+  const match = parsed.pathname.match(/^\/rtplive\/([A-Za-z0-9_-]+)\/playlist\.m3u8$/);
+  if (!match) return '';
+  return `${CDOT_CCTV_SNAPSHOT_BASE_URL}${match[1]}.flv.png`;
+}
+
+export function normalizeCdotCamera(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = raw.id;
+  if (id === undefined || id === null || id === '') return null;
+  const cameraId = `cdot-${id}`;
+  const lat = Number(raw.location?.latitude);
+  const lon = Number(raw.location?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (raw.active === false) return null;
+  if (
+    lat < CDOT_CCTV_BBOX.minLat || lat > CDOT_CCTV_BBOX.maxLat ||
+    lon < CDOT_CCTV_BBOX.minLon || lon > CDOT_CCTV_BBOX.maxLon
+  ) return null;
+  const views = Array.isArray(raw.views) ? raw.views : [];
+  const stillView = views.find((v) => v?.type === 'STILL_IMAGE' && typeof v.url === 'string');
+  const streamView = views.find((v) => v?.type === 'WMP' && typeof v.url === 'string');
+  const view = stillView ?? streamView;
+  if (!view) return null;
+  const name = typeof raw.name === 'string' && raw.name.trim()
+    ? raw.name.trim()
+    : `CDOT camera ${id}`;
+  let feedType;
+  let url;
+  let snapshotUrl;
+  if (view.type === 'STILL_IMAGE') {
+    let parsed;
+    try {
+      parsed = new URL(view.url);
+    } catch {
+      return null;
+    }
+    if (parsed.hostname !== CDOT_CCTV_SNAPSHOT_HOST) return null;
+    feedType = 'image';
+    url = view.url;
+    snapshotUrl = view.url;
+  } else {
+    // The feed itself carries the snapshot as videoPreviewUrl; derive it
+    // from the playlist URL only when that field is missing.
+    snapshotUrl =
+      typeof view.videoPreviewUrl === 'string' &&
+      view.videoPreviewUrl.startsWith(`${CDOT_CCTV_SNAPSHOT_BASE_URL}`)
+        ? view.videoPreviewUrl
+        : cdotSnapshotUrlForStream(view.url);
+    if (!snapshotUrl) return null;
+    feedType = 'hls';
+    url = view.url;
+  }
+  let heading = directionToHeading(name);
+  if (!Number.isFinite(heading)) heading = directionToHeading(view.name ?? '', true);
+  const hasHeading = Number.isFinite(heading);
+  const headingConfidence = hasHeading ? 'high' : 'low';
+  return {
+    id: cameraId,
+    name,
+    city: 'Denver',
+    cityId: 'cdot-denver',
+    provider: 'CDOT',
+    lat,
+    lon,
+    frameRefreshMs: CDOT_CCTV_FRAME_REFRESH_MS,
+    headingDeg: hasHeading ? heading : fallbackHeadingFromId(cameraId, headingConfidence) || 0,
+    headingConfidence,
+    pitchDeg: hasHeading ? -24 : -18,
+    fovDeg: hasHeading ? 56 : 44,
+    rangeM: hasHeading ? 210 : 145,
+    mountHeightM: hasHeading ? 10 : 8,
+    groundElevationM: 1609, // Denver is ~1,609 m above sea level; client ground resolution owns placement.
+    feedType,
+    url,
+    snapshotUrl,
+    sourceKind: 'cdot-open-data',
+    license: 'Public CDOT / COtrip traffic camera',
+  };
+}
+
+export async function loadCdotSourcesFromOpenData(_opts = {}, env = process.env) {
+  const maxCount = Math.max(
+    0,
+    Number.parseInt(env?.CCTV_CDOT_MAX_SOURCES ?? '', 10) || DEFAULT_CDOT_MAX_SOURCES,
+  );
+  try {
+    const response = await fetch(CDOT_CCTV_URL, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS),
+      redirect: 'error',
+    });
+    if (!response.ok) {
+      console.warn('[CCTV] CDOT source download failed: HTTP %s', response.status);
+      return [];
+    }
+    const payload = await readResponseJsonCapped(response, 2 * 1024 * 1024);
+    const rows = Array.isArray(payload) ? payload : [];
+    const seen = new Set();
+    const unique = [];
+    for (const row of rows) {
+      const source = normalizeCdotCamera(row);
+      if (!source || seen.has(source.id)) continue;
+      seen.add(source.id);
+      unique.push(source);
+    }
+    const prioritized = prioritizeSources(unique, maxCount, CDOT_ANCHORS);
+    console.info(
+      '[CCTV] Loaded CDOT camera sources: %s Active (using nearest %s)',
+      unique.length,
+      prioritized.length,
+    );
+    return prioritized;
+  } catch (err) {
+    console.warn('[CCTV] CDOT source download error:', err.message);
+    return [];
+  }
 }
 
 /**

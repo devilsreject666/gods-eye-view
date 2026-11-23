@@ -21,6 +21,7 @@ import { PROXY_SIGNALS } from '../../src/localRequestGate.mjs';
 import { createHlsPuller, HlsCapacityError } from './cctv/stream.js';
 import { isMlitRiverAdjustmentImage } from './cctv/worldCameras.js';
 import { ottawaAuthorizedFrameUrl } from './cctv/ottawa.js';
+import { handleCctvPoliceCheck } from './cctv/policeCheck.js';
 import {
   GOOGLE_DEFAULT_PER_MIN,
   googleServerApiKey,
@@ -351,7 +352,31 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
           return;
         }
 
-        if (url.pathname.startsWith('/stream/')) {
+        if (url.pathname.startsWith('/police-check/')) {
+      if (req.method !== 'POST') {
+        res.writeHead(405, { 'Content-Type': 'application/json', Allow: 'POST' });
+        res.end(JSON.stringify({ ok: false, error: 'Method not allowed' }));
+        return;
+      }
+      const cameraId = decodeURIComponent(url.pathname.replace('/police-check/', '').trim()) || 'camera';
+      const source = sourceById.get(cameraId);
+      const snapshotUrl = source?.snapshotUrl
+        || (!isVideoFeedType(normalizeFeedType(source?.feedType)) ? source?.url : '');
+      const result = await handleCctvPoliceCheck({
+        cameraId,
+        source,
+        fetchSnapshot: snapshotUrl
+          ? async () => fetchCctvImageFromUpstream(snapshotUrl, {
+            timeoutMs: CCTV_FRAME_FETCH_TIMEOUT_MS,
+          })
+          : null,
+        env: process.env,
+      });
+      res.writeHead(result.status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify(result.body));
+      return;
+    }
+    if (url.pathname.startsWith('/stream/')) {
           const cameraId =
             decodeURIComponent(url.pathname.replace('/stream/', '').trim()) ||
             'camera';

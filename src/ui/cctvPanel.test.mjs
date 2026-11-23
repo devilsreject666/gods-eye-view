@@ -18,6 +18,7 @@ const BUTTONS = {
   _cctvCoverageBtn: 'cctv-coverage-btn',
   _cctvAutoHopBtn: 'cctv-auto-hop-btn',
   _cctvProjectionBtn: 'cctv-projection-btn',
+  _cctvPoliceCheckBtn: 'cctv-police-check-btn',
 };
 
 function panel(t, { video = false } = {}) {
@@ -126,6 +127,7 @@ test('an active camera renders the switch, toggles, CAL chip and meta line', asy
   assert.equal(byId('cctv-coverage-btn').classList.contains('active'), true);
   assert.equal(byId('cctv-auto-hop-btn').textContent, 'AUTO HOP ON');
   assert.equal(byId('cctv-projection-btn').textContent, 'PROJECTION OFF');
+  assert.equal(byId('cctv-police-check-btn').textContent, 'CHECK FOR POLICE');
   assert.equal(byId('cctv-projection-btn').classList.contains('active'), false);
   // The toggles say their state to assistive technology, not only by colour.
   const pressed = (id) => byId(id).getAttribute('aria-pressed');

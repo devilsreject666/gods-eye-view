@@ -29,6 +29,7 @@ import {
   loadCataloniaSourcesFromOpenData,
   loadIcelandSourcesFromOpenData,
   loadHkSourcesFromOpenData,
+  loadCdotSourcesFromOpenData,
   loadDelDOTSourcesFromOpenData,
   loadKingCountySourcesFromOpenData,
   loadWsdotSourcesFromOpenData,
@@ -137,6 +138,11 @@ const LIVE_PACKS = [
     name: 'deldot',
     enabled: () => envEnabled('CCTV_DELDOT_ENABLED'),
     load: loadDelDOTSourcesFromOpenData,
+  },
+  {
+    name: 'cdot',
+    enabled: () => envEnabled('CCTV_CDOT_ENABLED'),
+    load: loadCdotSourcesFromOpenData,
   },
   {
     name: 'kingcounty',
