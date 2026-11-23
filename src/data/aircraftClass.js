@@ -489,3 +489,6 @@ export const AIRCRAFT_CLASS_LABELS = Object.freeze({
  * yellow amber (#FFB800).
  */
 export const VEHICLE_TINT_CSS = '#FF8F1F';
+
+/** Teal-green tint for rotorcraft (helicopters) in the flights layer: distinct from the red emergency, amber military and orange vehicle tints. */
+export const HELICOPTER_TINT_CSS = '#00E5A0';

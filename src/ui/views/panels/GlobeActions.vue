@@ -33,5 +33,8 @@ const tilted = computed(() => Boolean(camera.value?.tilted));
   <UiButton id="reset-globe-view" :aria-label="resetBusy ? t('Resetting to full globe view') : t('Reset to full globe view')" :title="t('Reset camera and return to full globe view')" @click="act('reset')">
     <UiIcon name="public" :size="null" />
   </UiButton>
+  <UiButton id="my-location" :aria-label="t('My location')" :title="t('Fly to my location')" @click="act('myLocation')">
+    <UiIcon name="my_location" :size="null" />
+  </UiButton>
 </nav>
 </template>

@@ -29,6 +29,7 @@ import { LiveControls } from './liveControls.js';
 import { LocalSdrControls } from './localSdrControls.js';
 import { LocationNavigation } from './locationNavigation.js';
 import { bindCameraOrientationControls } from './cameraOrientationControls.js';
+import { bindMyLocation } from './myLocation.js';
 import { createMapSourceControls } from './mapSource.js';
 import { STYLES } from './effects.js';
 import { isHudLayout, isLegacySonarHudLayout } from '../hudLayouts.js';
@@ -704,6 +705,7 @@ export class StyleManager extends ShellFacade {
     this._initLocationBar();
     this._initMobileShell();
     this._initShareButton();
+    this._initMyLocationButton();
     this._initCameraOrientationControls();
     this._initClearSelectedLayersButton();
     this._initHUDToggle();
@@ -1847,6 +1849,19 @@ export class StyleManager extends ShellFacade {
    * 'cancelled' (no toast) or false (failed).
    * @returns {void}
    */
+  _initMyLocationButton() {
+    const store = useGlobeActionsStore(applicationPinia());
+    if (this._myLocationToken) store.detach(this._myLocationToken);
+    this._myLocationControls?.destroy?.();
+    this._myLocationControls = bindMyLocation({
+      viewer: this.viewer,
+      showToast: (message) => this._showToast(message),
+    });
+    this._myLocationToken = store.connect({
+      myLocation: () => this._myLocationControls.locate(),
+    });
+  }
+
   _initShareButton() {
     const store = useGlobeActionsStore(applicationPinia());
     if (this._shareToken) store.detach(this._shareToken);

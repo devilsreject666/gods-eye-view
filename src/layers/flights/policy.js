@@ -1,6 +1,7 @@
 import { EMERGENCY_TINT_CSS } from '../../data/aircraftEmergency.js';
 import { cssColor } from '../../render/color.js';
 import { VEHICLE_TINT_CSS } from '../../data/aircraftClass.js';
+import { HELICOPTER_TINT_CSS } from '../../data/aircraftClass.js';
 
 /** A CSS colour as frozen `[r, g, b, a]`, 0..1 (the renderer's `Color`). */
 const rgba = (css, alpha) =>
@@ -21,6 +22,9 @@ export const VEHICLE_TINT = rgba(VEHICLE_TINT_CSS);
 /** Red tint for aircraft broadcasting an emergency (7500/7600/7700 or ADS-B status). */
 
 export const EMERGENCY_TINT = rgba(EMERGENCY_TINT_CSS);
+
+/** Teal-green tint for rotorcraft (helicopters), e.g. Flight For Life and law-enforcement helicopters. Emergency red still outranks it. */
+export const HELICOPTER_TINT = rgba(HELICOPTER_TINT_CSS);
 
 // --- Ground traffic (owner reversal 2026-07-03: "absolutely we should see planes
 // taxiing and landing") -----------------------------------------------------------
